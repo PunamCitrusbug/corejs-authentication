@@ -14,6 +14,7 @@ onDOMContentLoaded(() => {
     const resetTokenError = document.getElementById('resetTokenError');
     const resetError = document.getElementById('resetError');
     const resetSuccess = document.getElementById('resetSuccess');
+    const confirmPasswordFeedback = confirmPasswordInput.parentElement.querySelector('.invalid-feedback'); // Get confirm password feedback element
     
     // Password requirement elements
     const lengthReq = document.getElementById('length');
@@ -91,7 +92,7 @@ onDOMContentLoaded(() => {
     const validatePasswordMatch = () => {
         if (confirmPasswordInput.value === '') {
             confirmPasswordInput.classList.remove('is-valid', 'is-invalid');
-            return false;
+            return false; // No validation needed if empty, handled on submit
         } else if (confirmPasswordInput.value === newPasswordInput.value) {
             confirmPasswordInput.classList.add('is-valid');
             confirmPasswordInput.classList.remove('is-invalid');
@@ -99,6 +100,7 @@ onDOMContentLoaded(() => {
         } else {
             confirmPasswordInput.classList.add('is-invalid');
             confirmPasswordInput.classList.remove('is-valid');
+            confirmPasswordFeedback.textContent = 'Passwords do not match.'; // Set match error
             return false;
         }
     };
@@ -129,16 +131,43 @@ onDOMContentLoaded(() => {
         // Validate form
         let isValid = true;
         
+        // --- Reset validation states and messages --- START ---
+        [newPasswordInput, confirmPasswordInput].forEach(input => {
+            input.classList.remove('is-invalid', 'is-valid');
+        });
+        confirmPasswordFeedback.textContent = 'Confirm Password is required.'; // Reset to default required error
+        // --- Reset validation states and messages --- END ---
+
+        // --- Validate required fields first --- START ---
+        if (!newPassword) {
+            newPasswordInput.classList.add('is-invalid');
+            // Password requirements handled by indicators
+            isValid = false;
+        }
+        if (!confirmPassword) {
+            confirmPasswordInput.classList.add('is-invalid');
+            confirmPasswordFeedback.textContent = 'Confirm Password is required.'; // Set required error
+            isValid = false;
+        }
+
+        if (!isValid) return; // Stop if required fields missing
+        // --- Validate required fields first --- END ---
+
+        // --- Validate specific rules if required fields are present --- START ---
         const passwordValidation = validatePassword(newPassword);
         if (!passwordValidation.isValid) {
+            newPasswordInput.classList.add('is-invalid');
+            // Indicators show the specific errors
             isValid = false;
         }
-        
-        if (!confirmPassword || confirmPassword !== newPassword) {
+
+        if (confirmPassword !== newPassword) {
             confirmPasswordInput.classList.add('is-invalid');
+            confirmPasswordFeedback.textContent = 'Passwords do not match.'; // Set match error
             isValid = false;
         }
-        
+        // --- Validate specific rules if required fields are present --- END ---
+
         if (!isValid) {
             return;
         }

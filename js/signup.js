@@ -15,6 +15,12 @@ onDOMContentLoaded(() => {
     const confirmPasswordInput = document.getElementById('confirmPassword');
     const signupError = document.getElementById('signupError');
     
+    // Get feedback elements
+    const firstNameFeedback = firstNameInput.parentElement.querySelector('.invalid-feedback');
+    const lastNameFeedback = lastNameInput.parentElement.querySelector('.invalid-feedback');
+    const emailFeedback = emailInput.parentElement.querySelector('.invalid-feedback');
+    const confirmPasswordFeedback = confirmPasswordInput.parentElement.querySelector('.invalid-feedback');
+    
     // Password requirement elements
     const lengthReq = document.getElementById('length');
     const uppercaseReq = document.getElementById('uppercase');
@@ -27,8 +33,11 @@ onDOMContentLoaded(() => {
     
     // Name validation
     const validateName = (input) => {
+        const feedbackElement = input.parentElement.querySelector('.invalid-feedback');
         if (input.value.trim() === '') {
             input.classList.remove('is-valid', 'is-invalid');
+            feedbackElement.textContent = `${input.previousElementSibling.textContent} is required.`;
+            return false;
         } else if (input.value.trim().length > 0 && input.value.trim().length <= 15) {
             input.classList.add('is-valid');
             input.classList.remove('is-invalid');
@@ -36,9 +45,9 @@ onDOMContentLoaded(() => {
         } else {
             input.classList.add('is-invalid');
             input.classList.remove('is-valid');
+            feedbackElement.textContent = `${input.previousElementSibling.textContent} must be less than 15 characters.`;
             return false;
         }
-        return false;
     };
     
     // First and last name validation
@@ -60,6 +69,7 @@ onDOMContentLoaded(() => {
         } else {
             this.classList.add('is-invalid');
             this.classList.remove('is-valid');
+            emailFeedback.textContent = 'Please enter a valid email address.';
         }
     });
     
@@ -93,6 +103,7 @@ onDOMContentLoaded(() => {
         } else {
             confirmPasswordInput.classList.add('is-invalid');
             confirmPasswordInput.classList.remove('is-valid');
+            confirmPasswordFeedback.textContent = 'Passwords do not match.';
             return false;
         }
     };
@@ -116,31 +127,77 @@ onDOMContentLoaded(() => {
         // Validate form
         let isValid = true;
         
-        if (!firstName || firstName.length > 15) {
+        // --- Reset validation states and messages --- START ---
+        [firstNameInput, lastNameInput, emailInput, passwordInput, confirmPasswordInput].forEach(input => {
+            input.classList.remove('is-invalid', 'is-valid');
+        });
+        firstNameFeedback.textContent = 'First name must be less than 15 characters.';
+        lastNameFeedback.textContent = 'Last name must be less than 15 characters.';
+        emailFeedback.textContent = 'Please enter a valid email address.';
+        confirmPasswordFeedback.textContent = 'Confirm Password is required.';
+        // --- Reset validation states and messages --- END ---
+
+        // --- Validate required fields first --- START ---
+        if (!firstName) {
             firstNameInput.classList.add('is-invalid');
+            firstNameFeedback.textContent = 'First Name is required.';
             isValid = false;
         }
-        
-        if (!lastName || lastName.length > 15) {
+        if (!lastName) {
             lastNameInput.classList.add('is-invalid');
+            lastNameFeedback.textContent = 'Last Name is required.';
             isValid = false;
         }
-        
-        if (!email || !validateEmail(email)) {
+        if (!email) {
             emailInput.classList.add('is-invalid');
+            emailFeedback.textContent = 'Email is required.';
             isValid = false;
         }
-        
+        if (!password) {
+            passwordInput.classList.add('is-invalid');
+            isValid = false;
+        }
+        if (!confirmPassword) {
+            confirmPasswordInput.classList.add('is-invalid');
+            confirmPasswordFeedback.textContent = 'Confirm Password is required.';
+            isValid = false;
+        }
+
+        if (!isValid) return; // Stop if any required field is missing
+        // --- Validate required fields first --- END ---
+
+        // --- Validate specific formats/rules if required fields are present --- START ---
+        if (firstName.length > 15) {
+            firstNameInput.classList.add('is-invalid');
+            firstNameFeedback.textContent = 'First name must be less than 15 characters.';
+            isValid = false;
+        }
+
+        if (lastName.length > 15) {
+            lastNameInput.classList.add('is-invalid');
+            lastNameFeedback.textContent = 'Last name must be less than 15 characters.';
+            isValid = false;
+        }
+
+        if (!validateEmail(email)) {
+            emailInput.classList.add('is-invalid');
+            emailFeedback.textContent = 'Please enter a valid email address.';
+            isValid = false;
+        }
+
         const passwordValidation = validatePassword(password);
         if (!passwordValidation.isValid) {
+            passwordInput.classList.add('is-invalid');
             isValid = false;
         }
-        
-        if (!confirmPassword || confirmPassword !== password) {
+
+        if (confirmPassword !== password) {
             confirmPasswordInput.classList.add('is-invalid');
+            confirmPasswordFeedback.textContent = 'Passwords do not match.';
             isValid = false;
         }
-        
+        // --- Validate specific formats/rules if required fields are present --- END ---
+
         if (!isValid) {
             return;
         }

@@ -24,27 +24,84 @@ onDOMContentLoaded(() => {
     let currentPage = 1;
     let itemsPerPage = 10;
     let currentUserId = null;
+    let loggedInUserEmail = null; // Store logged-in user's email
     
     // Display user's full name
     const displayUserInfo = () => {
         const user = getUserFromSession();
-        if (user && user.firstName && user.lastName) {
-            userFullName.textContent = `${user.firstName} ${user.lastName}`;
-        } else if (user && user.email) {
-            userFullName.textContent = user.email;
+        if (user) {
+            loggedInUserEmail = user.email ? user.email.toLowerCase() : null; // Set email here
+            if (user.firstName && user.lastName) {
+                userFullName.textContent = `${user.firstName} ${user.lastName}`;
+            } else if (user.email) {
+                userFullName.textContent = user.email;
+            } else {
+                userFullName.textContent = 'User';
+            }
         } else {
             userFullName.textContent = 'User';
         }
     };
     
-    // Fetch users
+    // Fetch users from both API and local storage
     const fetchUsers = () => {
-        // In a real application, we would fetch from API
-        // For this demo, we'll use the users stored in localStorage
-        users = getStoredUsers();
-        
-        // Apply initial filter (show all)
-        filterUsers();
+        // Display user info first to ensure loggedInUserEmail is set
+        displayUserInfo();
+
+        // Fetch users from API
+        const xhr = new XMLHttpRequest();
+        xhr.withCredentials = false; // Typically false for public APIs unless needed
+
+        xhr.addEventListener('readystatechange', function () {
+            if (this.readyState === this.DONE) {
+                let apiUsers = [];
+                if (this.status === 200) {
+                    try {
+                        const response = JSON.parse(this.responseText);
+                        if (response && response.data && response.data.data) {
+                            // Map API data to our user structure
+                            apiUsers = response.data.data.map(apiUser => ({
+                                id: apiUser.login.uuid, // Use uuid as a unique ID
+                                firstName: apiUser.name.first,
+                                lastName: apiUser.name.last,
+                                email: apiUser.email,
+                                createdAt: apiUser.registered.date, // Use registered date
+                                isApiUser: true // Flag to differentiate if needed later
+                            }));
+                        } else {
+                            console.error('Unexpected API response structure:', response);
+                        }
+                    } catch (e) {
+                        console.error('Error parsing API response:', e);
+                    }
+                } else {
+                    console.error('API request failed with status:', this.status);
+                }
+
+                // Get users from local storage
+                const localUsers = getStoredUsers();
+
+                // Combine local and API users
+                let combinedUsers = [...localUsers, ...apiUsers];
+
+                // Filter out the logged-in user *after* combining
+                if (loggedInUserEmail) {
+                    users = combinedUsers.filter(user => user.email.toLowerCase() !== loggedInUserEmail);
+                } else {
+                    users = combinedUsers; // Should not happen if logged in, but fallback
+                }
+
+                // Apply initial filter and render
+                filterUsers();
+            }
+        });
+
+        xhr.open('GET', 'https://api.freeapi.app/api/v1/public/randomusers?page=1&limit=10');
+        xhr.setRequestHeader('accept', 'application/json');
+        xhr.send();
+
+        // Show loading state initially
+        usersTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4">Loading users...</td></tr>';
     };
     
     // Filter users based on search
@@ -102,8 +159,9 @@ onDOMContentLoaded(() => {
             const createdDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A';
             
             // Create action buttons
-            const viewBtn = `<button class="btn btn-sm btn-outline-primary view-user me-1" data-id="${user.id}"><i class="bi bi-eye"></i></button>`;
-            const deleteBtn = `<button class="btn btn-sm btn-outline-danger delete-user" data-id="${user.id}"><i class="bi bi-trash"></i></button>`;
+            const viewBtn = `<button class="btn btn-sm btn-outline-primary view-user me-1" data-id="${user.id}" data-bs-toggle="modal" data-bs-target="#userDetailsModal"><i class="bi bi-eye"></i></button>`;
+            // Show delete for ALL users
+            const deleteBtn = `<button class="btn btn-sm btn-outline-danger delete-user" data-id="${user.id}" data-bs-toggle="modal" data-bs-target="#deleteConfirmModal"><i class="bi bi-trash"></i></button>`;
             
             row.innerHTML = `
                 <td>${startIndex + index + 1}</td>
@@ -132,6 +190,7 @@ onDOMContentLoaded(() => {
         document.querySelectorAll('.delete-user').forEach(btn => {
             btn.addEventListener('click', function() {
                 const userId = this.getAttribute('data-id');
+                // No need to check isApiUser here, show confirmation for all
                 showDeleteConfirmation(userId);
             });
         });
@@ -204,6 +263,7 @@ onDOMContentLoaded(() => {
     
     // Show user details modal
     const showUserDetails = (userId) => {
+        // Find user in the combined list (local + API)
         const user = users.find(u => u.id === userId);
         
         if (!user) {
@@ -213,19 +273,22 @@ onDOMContentLoaded(() => {
         // Format date
         const createdDate = user.createdAt ? new Date(user.createdAt).toLocaleString() : 'N/A';
         
-        // Create user details HTML
+        // Create user details HTML - Adjust fields as needed
         userDetailsBody.innerHTML = `
             <div class="user-details">
                 <h5 class="mb-3">${user.firstName || ''} ${user.lastName || ''}</h5>
+                <p><strong>ID:</strong> ${user.id || 'N/A'}</p> <!-- Display ID -->
                 <p><strong>Email:</strong> ${user.email || 'N/A'}</p>
-                <p><strong>Role:</strong> ${user.role || 'User'}</p>
                 <p><strong>Created At:</strong> ${createdDate}</p>
+                <!-- Add other details if available from API/local -->
+                ${user.location ? `<p><strong>Location:</strong> ${user.location.city}, ${user.location.country}</p>` : ''} 
+                ${user.phone ? `<p><strong>Phone:</strong> ${user.phone}</p>` : ''} 
             </div>
         `;
         
-        // Show modal
-        const userDetailsModal = new bootstrap.Modal(document.getElementById('userDetailsModal'));
-        userDetailsModal.show();
+        // Modal instance might already exist if triggered by button data attributes
+        // const userDetailsModal = new bootstrap.Modal(document.getElementById('userDetailsModal'));
+        // userDetailsModal.show(); // Not strictly necessary if using data-bs-toggle
     };
     
     // Show delete confirmation modal
@@ -242,21 +305,55 @@ onDOMContentLoaded(() => {
         if (!currentUserId) {
             return;
         }
-        
-        // Delete user from localStorage
-        const result = deleteUser(currentUserId);
-        
-        if (result) {
-            // Refresh the user list
-            fetchUsers();
-            
-            // Hide modal
-            const deleteConfirmModal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
-            deleteConfirmModal.hide();
-            
-            // Clear current user ID
-            currentUserId = null;
+
+        const userIndex = users.findIndex(u => u.id === currentUserId);
+        if (userIndex === -1) {
+            console.error("User to delete not found in main list.");
+            return;
         }
+
+        const userToDelete = users[userIndex];
+
+        // Delete from localStorage ONLY if it's a local user
+        if (!userToDelete.isApiUser) {
+            const deletedFromStorage = deleteUser(currentUserId); // From auth.js
+            if (!deletedFromStorage) {
+                console.warn("Failed to delete user from local storage, but proceeding with UI removal.");
+            }
+        }
+
+        // Remove from the main users array
+        users.splice(userIndex, 1);
+
+        // Remove from the filtered users array
+        const filteredIndex = filteredUsers.findIndex(u => u.id === currentUserId);
+        if (filteredIndex !== -1) {
+            filteredUsers.splice(filteredIndex, 1);
+        }
+
+        // Update total count
+        totalResults.textContent = filteredUsers.length;
+
+        // Re-render the current page or adjust if the page becomes empty
+        const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+        if (currentPage > totalPages && totalPages > 0) {
+            currentPage = totalPages; // Go to the last page if current page is now out of bounds
+        }
+        if (filteredUsers.length === 0) {
+             currentPage = 1; // Reset to page 1 if no users left
+        }
+
+        // Refresh the table and pagination
+        renderTable();
+        renderPagination();
+
+        // Hide the confirmation modal
+        const deleteConfirmModal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
+        if (deleteConfirmModal) {
+            deleteConfirmModal.hide();
+        }
+
+        currentUserId = null; // Reset current user ID
     };
     
     // Logout function

@@ -127,21 +127,6 @@ const requireNoAuth = () => {
     }
 };
 
-const getRandomUsers = async () => {
-    const url = 'https://api.freeapi.app/api/v1/public/randomusers?page=1&limit=10';
-    const options = { method: 'GET', headers: { accept: 'application/json' } };
-
-    try {
-        const response = await fetch(url, options);
-        const data = await response.json();
-        console.log('data', data);
-        return data; 
-    } catch (error) {
-        console.error('Error fetching random users:', error);
-        return [];
-    }
-};
-
 // Password toggle function
 const setupPasswordToggles = () => {
     document.querySelectorAll('.toggle-password').forEach(toggle => {
@@ -167,7 +152,6 @@ const setupPasswordToggles = () => {
 const onDOMContentLoaded = (callback) => {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', callback);
-        console.log('usersFromApi', getRandomUsers());
     } else {
         callback();
     }

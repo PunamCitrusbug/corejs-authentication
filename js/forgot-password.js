@@ -11,6 +11,7 @@ onDOMContentLoaded(() => {
     const emailInput = document.getElementById('email');
     const forgotError = document.getElementById('forgotError');
     const forgotSuccess = document.getElementById('forgotSuccess');
+    const emailFeedback = emailInput.parentElement.querySelector('.invalid-feedback');
     
     // Email validation
     emailInput.addEventListener('input', function() {
@@ -22,6 +23,7 @@ onDOMContentLoaded(() => {
         } else {
             this.classList.add('is-invalid');
             this.classList.remove('is-valid');
+            emailFeedback.textContent = 'Please enter a valid email address.';
         }
     });
     
@@ -36,9 +38,21 @@ onDOMContentLoaded(() => {
         // Get email
         const email = emailInput.value.trim();
         
-        // Validate email
-        if (!email || !validateEmail(email)) {
+        // Reset validation
+        emailInput.classList.remove('is-invalid', 'is-valid');
+        emailFeedback.textContent = 'Please enter a valid email address.';
+        
+        // Validate required first
+        if (!email) {
             emailInput.classList.add('is-invalid');
+            emailFeedback.textContent = 'Email is required.';
+            return;
+        }
+        
+        // Validate format if required is met
+        if (!validateEmail(email)) {
+            emailInput.classList.add('is-invalid');
+            emailFeedback.textContent = 'Please enter a valid email address.';
             return;
         }
         
