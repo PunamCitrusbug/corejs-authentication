@@ -94,6 +94,14 @@ body {
 .max-width-300 {
     max-width: 300px;
 }
+.modal-backdrop.fade {
+    opacity: 0 !important;
+    z-index: -1;
+}
+body.modal-open .modal-backdrop.show {
+    opacity: 0.5 !important;
+    z-index: 1050;
+}
 
 /* Responsive adjustments */
 @media (max-width: 768px) {

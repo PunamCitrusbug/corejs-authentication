@@ -85,12 +85,14 @@ onDOMContentLoaded(() => {
         numberReq.classList.toggle('valid', validation.rules.number);
         specialReq.classList.toggle('valid', validation.rules.special);
         
+        // Remove validation border
+        passwordInput.classList.remove('is-valid', 'is-invalid');
+        
         // Validate confirm password match
         if (confirmPasswordInput.value) {
             validatePasswordMatch();
         }
     });
-    
     // Confirm password validation
     const validatePasswordMatch = () => {
         if (confirmPasswordInput.value === '') {
@@ -108,8 +110,10 @@ onDOMContentLoaded(() => {
         }
     };
     
-    confirmPasswordInput.addEventListener('input', validatePasswordMatch);
-    
+    confirmPasswordInput.addEventListener('input', function() {
+        confirmPasswordInput.classList.remove('is-valid', 'is-invalid');
+        validatePasswordMatch();
+    });
     // Form submission
     signupForm.addEventListener('submit', async function(e) {
         e.preventDefault();
